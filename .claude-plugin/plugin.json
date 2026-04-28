@@ -1,0 +1,10 @@
+{
+  "name": "video-to-srt",
+  "version": "0.1.0",
+  "description": "Transcribe a video (URL or local file) into an SRT subtitle file using whisper.cpp — supports any yt-dlp-compatible platform (YouTube, Bilibili, 小红书, 抖音, Vimeo, Twitter/X, etc.)",
+  "author": { "name": "pierrelzw" },
+  "repository": "https://github.com/pierrelzw/video-to-srt",
+  "license": "MIT",
+  "keywords": ["video", "subtitles", "srt", "whisper", "transcription", "yt-dlp"],
+  "skills": ["./SKILL.md"]
+}

@@ -1,10 +1,9 @@
 {
   "name": "media-to-srt",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Transcribe a video or audio file (URL or local) into an SRT subtitle file. Choose: fast Douban ASR (with speaker diarization) or local whisper.cpp (private). Supports YouTube, Bilibili, 小红书, 抖音, Vimeo, Twitter/X, and local files (mp3/m4a/wav/aac/flac/mp4/webm/ogg).",
   "author": { "name": "pierrelzw" },
   "repository": "https://github.com/pierrelzw/media-to-srt",
   "license": "MIT",
-  "keywords": ["video", "audio", "subtitles", "srt", "whisper", "transcription", "yt-dlp", "podcast", "speech-to-text", "asr", "douban", "doubao", "speaker-diarization"],
-  "skills": ["./SKILL.md"]
+  "keywords": ["video", "audio", "subtitles", "srt", "whisper", "transcription", "yt-dlp", "podcast", "speech-to-text", "asr", "douban", "doubao", "speaker-diarization"]
 }

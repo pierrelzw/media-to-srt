@@ -11,14 +11,20 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from lib.config import load_credentials, validate_credentials, get_resource_id
 from lib.doubao_asr import DoubaoFlashClient, DoubaoStandardClient, DoubaoError
-from lib.srt_converter import utterances_to_srt, utterances_to_txt, generate_speaker_summary
+from lib.srt_converter import (
+    utterances_to_srt,
+    utterances_to_txt,
+    utterances_to_json,
+    utterances_to_webvtt,
+    generate_speaker_summary,
+)
 
 
 def run_doubao(
     audio_path: Path,
     backend: str = "flash",
-    output_srt: Optional[Path] = None,
-    output_txt: Optional[Path] = None,
+    output_prefix: Optional[Path] = None,
+    format: str = "srt",
     app_id: Optional[str] = None,
     access_token: Optional[str] = None,
     show_summary: bool = False,
@@ -53,18 +59,36 @@ def run_doubao(
 
         result = client.transcribe(audio_path)
 
-        # Default output path
-        if not output_srt:
-            output_srt = Path(str(audio_path) + ".srt")
+        # Default output prefix (strip extension from input)
+        if not output_prefix:
+            output_prefix = Path(str(audio_path).rsplit(".", 1)[0])
 
-        # Write SRT
-        num_srt = utterances_to_srt(result.utterances, output_srt)
-        print(f"✅ SRT saved: {output_srt}")
+        # Write requested formats
+        output_files = []
 
-        # Write TXT if requested
-        if output_txt:
-            num_txt = utterances_to_txt(result.utterances, output_txt)
+        if format in ("srt", "all"):
+            output_srt = Path(str(output_prefix) + ".srt")
+            utterances_to_srt(result.utterances, output_srt)
+            output_files.append(output_srt)
+            print(f"✅ SRT saved: {output_srt}")
+
+        if format in ("txt", "all"):
+            output_txt = Path(str(output_prefix) + ".txt")
+            utterances_to_txt(result.utterances, output_txt)
+            output_files.append(output_txt)
             print(f"✅ TXT saved: {output_txt}")
+
+        if format in ("json", "all"):
+            output_json = Path(str(output_prefix) + ".json")
+            utterances_to_json(result.utterances, output_json)
+            output_files.append(output_json)
+            print(f"✅ JSON saved: {output_json}")
+
+        if format in ("webvtt", "all"):
+            output_vtt = Path(str(output_prefix) + ".vtt")
+            utterances_to_webvtt(result.utterances, output_vtt)
+            output_files.append(output_vtt)
+            print(f"✅ WebVTT saved: {output_vtt}")
 
         # Print summary
         print(f"\n📊 Transcription Summary:")
@@ -92,14 +116,23 @@ def run_doubao(
 
 def run_whisper(
     audio_path: Path,
-    output_srt: Optional[Path] = None,
+    output_prefix: Optional[Path] = None,
+    format: str = "srt",
     language: Optional[str] = None,
 ) -> int:
-    """Run whisper.cpp transcription."""
+    """Run whisper.cpp transcription (SRT format only)."""
     import subprocess
 
-    if not output_srt:
-        output_srt = Path(str(audio_path) + ".srt")
+    if format != "srt":
+        print(f"❌ whisper.cpp backend only supports SRT output")
+        print(f"   (JSON/WebVTT require word-level data from Douban ASR)")
+        print(f"   Use: --backend flash --format {format}")
+        return 1
+
+    if not output_prefix:
+        output_prefix = Path(str(audio_path).rsplit(".", 1)[0])
+
+    output_srt = Path(str(output_prefix) + ".srt")
 
     print(f"🔒 Using whisper.cpp (local, offline) for transcription...")
     print(f"   Input: {audio_path}")
@@ -169,7 +202,7 @@ def run_whisper(
 def main() -> int:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Transcribe audio/video to SRT subtitles",
+        description="Transcribe audio/video to multiple formats",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -182,11 +215,17 @@ Examples:
   # Force whisper.cpp (local, private)
   transcribe.py input.mp4 --backend whisper
 
-  # Specify output file
-  transcribe.py input.mp4 --output subtitles.srt
+  # Specify output prefix and format
+  transcribe.py input.mp4 -o output --format json
 
-  # Generate both SRT and TXT
-  transcribe.py input.mp4 --output-txt transcript.txt
+  # Generate all formats
+  transcribe.py input.mp4 --format all
+
+  # Word-level timestamps (JSON)
+  transcribe.py input.mp4 --format json
+
+  # Karaoke format (WebVTT with word timestamps)
+  transcribe.py input.mp4 --format webvtt
         """,
     )
 
@@ -206,12 +245,13 @@ Examples:
         "-o",
         "--output",
         type=Path,
-        help="Output SRT file (default: input.srt)",
+        help="Output file prefix (default: input filename without extension)",
     )
     parser.add_argument(
-        "--output-txt",
-        type=Path,
-        help="Also generate plain text file",
+        "--format",
+        choices=["srt", "txt", "json", "webvtt", "all"],
+        default="srt",
+        help="Output format(s) (default: srt)",
     )
     parser.add_argument(
         "-l",
@@ -244,8 +284,8 @@ Examples:
     if backend == "auto":
         app_id, access_token = load_credentials()
         if validate_credentials(app_id, access_token):
-            # Use Douban Flash by default if credentials available
-            backend = "flash"
+            # Use Douban Standard by default if credentials available
+            backend = "standard"
         else:
             backend = "whisper"
 
@@ -253,13 +293,13 @@ Examples:
 
     # Run appropriate backend
     if backend == "whisper":
-        return run_whisper(args.input, args.output, args.language)
+        return run_whisper(args.input, args.output, args.format, args.language)
     else:
         return run_doubao(
             args.input,
             backend=backend,
-            output_srt=args.output,
-            output_txt=args.output_txt,
+            output_prefix=args.output,
+            format=args.format,
             app_id=args.app_id,
             access_token=args.access_token,
             show_summary=args.summary,

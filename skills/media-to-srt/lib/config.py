@@ -65,8 +65,8 @@ def get_resource_id(backend: str = "flash") -> str:
 
     # Default based on backend
     defaults = {
-        "flash": "volc.bigasr.auc_turbo",
-        "standard": "volc.bigasr.auc",
+        "flash": "volc.seedasr.auc",
+        "standard": "volc.seedasr.auc",
     }
     return defaults.get(backend, defaults["flash"])
 

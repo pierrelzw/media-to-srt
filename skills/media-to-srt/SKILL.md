@@ -1,6 +1,6 @@
 ---
 name: media-to-srt
-description: Transcribe a video or audio file (URL or local) into an SRT subtitle file using whisper.cpp or Douban ASR. Supports any yt-dlp-compatible platform (YouTube, Bilibili, Xiaohongshu/小红书, Douyin/抖音, Vimeo, Twitter/X, etc.) plus local audio files (m4a/mp3/wav/aac/flac). Use this skill whenever the user asks to "transcribe a video", "转录视频", "提取字幕", "generate subtitles", "视频转文字", "get transcript from video", "语音转文字", "转录音频", "转录播客", "播客转文字", "transcribe audio", "transcribe podcast", "voice memo", or provides a video/audio URL or local path (including .m4a/.mp3/.wav) and wants speech-to-text output. Support both local whisper.cpp (default, no credentials) and cloud Douban ASR (faster, supports speaker diarization). This is the right skill even if the user says "转成文本" or just "transcribe" — SRT is the default output because timestamps are almost always useful.
+description: Transcribe a video or audio file (URL or local) into multiple formats (SRT/JSON/WebVTT/TXT) using whisper.cpp or Douban ASR. Supports any yt-dlp-compatible platform (YouTube, Bilibili, Xiaohongshu/小红书, Douyin/抖音, Vimeo, Twitter/X, etc.) plus local audio files (m4a/mp3/wav/aac/flac). Use this skill whenever the user asks to "transcribe a video", "转录视频", "提取字幕", "generate subtitles", "视频转文字", "get transcript from video", "语音转文字", "转录音频", "转录播客", "播客转文字", "transcribe audio", "transcribe podcast", "voice memo", "词级转录", "word-level transcript", "词时间戳", "karaoke", "卡拉OK", "逐词", or provides a video/audio URL or local path (including .m4a/.mp3/.wav) and wants speech-to-text output. Support both local whisper.cpp (default, no credentials) and cloud Douban ASR (faster, supports speaker diarization). This is the right skill even if the user says "转成文本" or just "transcribe" — SRT is the default output because timestamps are almost always useful. Supports JSON for word-level data and WebVTT for karaoke-style word-by-word timestamps.
 ---
 
 # media-to-srt
@@ -94,33 +94,44 @@ Work in the current project directory by default, or `~/Downloads/` if the user 
   ```
 - **Local video/audio file**: use as-is, set `$PREFIX` from filename
 
-### 2. Transcribe using CLI tool
+### 2. Select backend and output format
 
-**Auto-detect backend** (Douban Flash if credentials available, else whisper.cpp):
+**Ask the user for both backend and output format** together:
+
+| User says | Backend | Format |
+|---|---|---|
+| "快速"/"快" (quick) | flash | srt |
+| "离线"/"本地" (offline/local) | whisper | srt |
+| "大文件" (large file) | standard | srt |
+| "词级"/"词时间戳"/"word-level" | standard (or flash for speed) | json |
+| "卡拉OK"/"逐词"/"karaoke" | standard (or flash for speed) | webvtt |
+| "所有格式"/"all formats" | standard (or flash for speed) | all |
+
+**Auto-detect backend** (Douban Standard if credentials available, else whisper.cpp):
 ```bash
 python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>"
 ```
 
-**Force specific backend**:
+**Force specific backend + format**:
 ```bash
-# Douban Flash (fast, < 5 sec)
-python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --backend flash
+# Douban Flash with JSON word-level data
+python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --backend flash --format json
 
-# Douban Standard (large files, async polling)
-python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --backend standard
+# Douban Standard with WebVTT karaoke timestamps
+python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --backend standard --format webvtt
 
-# whisper.cpp (local, offline)
+# whisper.cpp (local, offline) — SRT only
 python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --backend whisper
+
+# Generate all formats at once
+python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --format all
+
+# Specify output prefix
+python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" -o my_output --format json
 ```
 
 **Advanced options**:
 ```bash
-# Specify output path
-python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" -o subtitles.srt
-
-# Generate both SRT and TXT
-python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --output-txt transcript.txt
-
 # Show speaker timeline (Douban only)
 python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --summary
 
@@ -149,11 +160,9 @@ Output: `$PREFIX.srt` with timestamps and optional speaker labels
   - **Speakers detected**: (if Douban ASR with multiple speakers)
   - **Processing time**: wall-clock seconds
 
-## Output format
+## Output formats
 
-Default output is SRT with timestamps and optional speaker labels.
-
-### SRT with speaker diarization (Douban ASR)
+### SRT (default) — Subtitle format with timestamps
 
 ```
 1
@@ -165,14 +174,80 @@ Default output is SRT with timestamps and optional speaker labels.
 [Speaker_2] Thanks for having me!
 ```
 
-### Plain text output
+Generated with `--format srt` or default (no --format flag).
 
-If user asks for plain text (纯文本 / txt / "just the text"):
-```bash
-python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --output-txt output.txt
+### TXT — Plain text transcript
+
+```
+[Speaker_1] Hello, welcome to the podcast.
+[Speaker_2] Thanks for having me!
 ```
 
-Generates text file with speaker labels stripped.
+Generated with `--format txt`.
+
+### JSON — Word-level timestamps and full metadata
+
+```json
+{
+  "metadata": {
+    "duration_ms": 10000,
+    "speakers": ["Speaker_1", "Speaker_2"],
+    "segment_count": 2,
+    "word_count": 42
+  },
+  "segments": [
+    {
+      "id": 1,
+      "start_ms": 0,
+      "end_ms": 5000,
+      "speaker": "Speaker_1",
+      "text": "Hello, welcome to the podcast.",
+      "words": [
+        {"text": "Hello,", "start_ms": 0, "end_ms": 600, "confidence": 0.95},
+        {"text": "welcome", "start_ms": 700, "end_ms": 1200, "confidence": 0.92},
+        ...
+      ]
+    }
+  ]
+}
+```
+
+Generated with `--format json`. Best for downstream NLP processing or word-level analysis.
+
+### WebVTT — Karaoke-style word-by-word timestamps
+
+```vtt
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:05.000
+<v Speaker_1><00:00:00.000><c>Hello,</c><00:00:00.700><c>welcome</c>...
+
+2
+00:00:05.500 --> 00:00:10.000
+<v Speaker_2><00:00:05.500><c>Thanks</c><00:00:06.200><c>for</c>...
+```
+
+Generated with `--format webvtt`. Perfect for karaoke, highlighting, or precise word-level synchronization.
+
+### ALL — Generate all four formats at once
+
+```bash
+python3 <media-to-srt>/bin/transcribe.py "$PREFIX.<ext>" --format all
+```
+
+Creates: `$PREFIX.srt`, `$PREFIX.txt`, `$PREFIX.json`, `$PREFIX.vtt`
+
+**Note**: JSON/WebVTT/TXT formats require word-level data, only available from **Douban ASR** (flash or standard). whisper.cpp backend supports **SRT only**.
+
+```bash
+# ✅ Supported (Douban + JSON)
+python3 <media-to-srt>/bin/transcribe.py input.mp3 --backend flash --format json
+
+# ❌ Not supported (whisper + JSON)
+python3 <media-to-srt>/bin/transcribe.py input.mp3 --backend whisper --format json
+# Error: whisper.cpp backend only supports SRT output
+```
 
 ## Notes
 

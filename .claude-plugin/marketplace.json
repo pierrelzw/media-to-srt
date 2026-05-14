@@ -1,0 +1,34 @@
+{
+  "name": "media-to-srt",
+  "owner": {
+    "name": "pierrelzw"
+  },
+  "metadata": {
+    "description": "Single-plugin marketplace for media-to-srt"
+  },
+  "plugins": [
+    {
+      "name": "media-to-srt",
+      "source": "./.",
+      "description": "Transcribe a video or audio file (URL or local) into an SRT subtitle file using whisper.cpp. Supports any yt-dlp-compatible platform (YouTube, Bilibili, 小红书, 抖音, Vimeo, Twitter/X, etc.) plus local audio (mp3/m4a/wav/aac/flac).",
+      "version": "0.2.0",
+      "author": {
+        "name": "pierrelzw"
+      },
+      "repository": "https://github.com/pierrelzw/media-to-srt",
+      "license": "MIT",
+      "keywords": [
+        "video",
+        "audio",
+        "subtitles",
+        "srt",
+        "whisper",
+        "transcription",
+        "yt-dlp",
+        "podcast",
+        "speech-to-text"
+      ],
+      "category": "media-tools"
+    }
+  ]
+}
